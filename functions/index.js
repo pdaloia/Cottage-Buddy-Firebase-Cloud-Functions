@@ -40,6 +40,7 @@ exports.sendInviteNotification = functions.firestore
         const apns = {
           payload: {
             aps: {
+              badge: 1,
               sound: "default",
             },
           },
