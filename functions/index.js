@@ -37,12 +37,21 @@ exports.sendInviteNotification = functions.firestore
           body: "You received an invite!",
         };
 
+        const apns = {
+          payload: {
+            aps: {
+              sound: "default",
+            },
+          },
+        };
+
         // send the notification to the tokens
         const messages = [];
         retrievedTokens.forEach((token) => {
           messages.push({
             token: token.fcmToken,
             notification: notification,
+            apns: apns,
           });
         });
 
