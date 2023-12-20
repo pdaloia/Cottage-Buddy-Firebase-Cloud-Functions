@@ -25,8 +25,11 @@ exports.sendInviteNotification = functions.firestore
                 const newElement = {
                   "fcmToken": doc.id,
                   "lastRefresh": doc.data().lastRefresh,
+                  "cottageInvitesEnabled": doc.data().cottageInvitesEnabled,
                 };
-                retrievedTokens.push(newElement);
+                if (newElement.cottageInvitesEnabled) {
+                  retrievedTokens.push(newElement);
+                }
               });
             }).catch((reason) => {
               log(reason);
