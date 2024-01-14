@@ -66,3 +66,16 @@ exports.sendInviteNotification = functions.firestore
         }
       }
     });
+
+exports.deleteUserDocument = functions.auth.user().onDelete( async (user) => {
+  console.log("Deleting user:");
+
+  const userIdToDelete = user.uid;
+  console.log(userIdToDelete);
+
+  const db = admin.firestore();
+
+  await db.collection("users")
+      .doc(userIdToDelete)
+      .delete();
+});
