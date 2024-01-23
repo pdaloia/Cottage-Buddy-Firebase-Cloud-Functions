@@ -2,6 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const {log} = require("firebase-functions/logger");
 const {getMessaging} = require("firebase-admin/messaging");
+const {FieldValue} = require("firebase-admin/firestore");
 
 admin.initializeApp(functions.config().firebase);
 
@@ -87,3 +88,32 @@ exports.deleteUserDocument = functions.auth.user().onDelete( async (user) => {
       .doc(userIdToDelete)
       .delete();
 });
+
+exports.didDeleteCottage = functions.firestore
+    .document("cottages/{cottageId}")
+    .onDelete( async (snap, context) => {
+      const db = admin.firestore();
+
+      const deletedValue = snap.data();
+      const invitedEmails = deletedValue.invitedEmails;
+      const cottageId = context.params.cottageId;
+
+      for (const email of invitedEmails) {
+        const userDocQuery = db.collection("users").where("email", "==", email);
+
+        userDocQuery.get()
+            .then((querySnapshot) => {
+              if (!querySnapshot.empty) {
+                querySnapshot.docs[0].ref.update(
+                    "invitedCottageIDs", FieldValue.arrayRemove(cottageId),
+                );
+              } else {
+                db.collection("uncreated").doc(email).update(
+                    "pendingInvites", FieldValue.arrayRemove(cottageId),
+                );
+              }
+            }).catch((reason) => {
+              log(reason);
+            });
+      }
+    });
