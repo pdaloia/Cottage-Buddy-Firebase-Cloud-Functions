@@ -16,8 +16,28 @@ exports.sendInviteNotification = functions.firestore
       const newInvites = newValue.invitedCottageIDs;
 
       if (newInvites.length > oldInvites.length) {
-        // retrieve the tokens in the user document's 'fcmTokens' collection
+        // get the firestore database
         const db = admin.firestore();
+
+        // get the invited cottage id
+        const invitedCottageId = newInvites
+            .filter((x) => !oldInvites.includes(x))[0];
+
+        let organizerRef;
+        // get the cottage Information
+        await db.collection("cottages")
+            .doc(invitedCottageId).get().then((cottageSnapshot) => {
+              const cottageData = cottageSnapshot.data();
+              organizerRef = cottageData.organizer;
+            });
+
+        let organizerName;
+        await organizerRef.get().then((organizerSnapshot) => {
+          const organizerData = organizerSnapshot.data();
+          organizerName = organizerData.fullName;
+        });
+
+        // retrieve the tokens in the user document's 'fcmTokens' collection
         const retrievedTokens = [];
         await db.collection("users")
             .doc(context.params.userId)
@@ -65,6 +85,25 @@ exports.sendInviteNotification = functions.firestore
         if (batchResponse.failureCount < 1) {
           // Messages sent sucessfully. We're done!
         }
+
+        // send the email by adding it to emails collections
+        let userEmail;
+        await db.collection("users")
+            .doc(context.params.userId).get().then((userSnapshot) => {
+              const userData = userSnapshot.data();
+              userEmail = userData.email;
+            });
+
+        const emailToSend = {
+          subject: "You Have Received a Cottage Invite!",
+          html: `${organizerName} has invited you to a cottage!`,
+        };
+
+        await db.collection("emails")
+            .doc().set({
+              to: userEmail,
+              message: emailToSend,
+            });
       }
     });
 
