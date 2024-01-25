@@ -107,6 +107,66 @@ exports.sendInviteNotification = functions.firestore
       }
     });
 
+exports.sendEmailToUnregisteredAddress = functions.firestore
+    .document("uncreated/{emailAddress}")
+    .onWrite( async (change, context) => {
+      // Exit when the data is deleted.
+      if (!change.after.exists) {
+        return null;
+      }
+
+      const newValue = change.after.data();
+      const oldValue = change.before.data();
+
+      const newInvites = newValue.pendingInvites;
+
+      let oldInvites = [];
+      if (oldValue === undefined || oldValue === null) {
+        // do nothing
+      } else {
+        oldInvites = oldValue.pendingInvites;
+      }
+
+      if (newInvites.length > oldInvites.length) {
+        // get the firestore database
+        const db = admin.firestore();
+
+        // get the invited cottage id
+        const invitedCottageId = newInvites
+            .filter((x) => !oldInvites.includes(x))[0];
+        log(invitedCottageId);
+
+        let organizerRef;
+        // get the cottage Information
+        await db.collection("cottages")
+            .doc(invitedCottageId).get().then((cottageSnapshot) => {
+              const cottageData = cottageSnapshot.data();
+              organizerRef = cottageData.organizer;
+            });
+
+        let organizerName;
+        await organizerRef.get().then((organizerSnapshot) => {
+          const organizerData = organizerSnapshot.data();
+          organizerName = organizerData.fullName;
+        });
+        log(organizerName);
+
+        const emailAddress = context.params.emailAddress;
+        log(emailAddress);
+
+        const emailToSend = {
+          subject: "You Have Received a Cottage Invite!",
+          html: `${organizerName} has invited you to a cottage!`,
+        };
+
+        await db.collection("emails")
+            .doc().set({
+              to: emailAddress,
+              message: emailToSend,
+            });
+      }
+    });
+
 exports.deleteUserDocument = functions.auth.user().onDelete( async (user) => {
   const userIdToDelete = user.uid;
 
