@@ -24,11 +24,13 @@ exports.sendInviteNotification = functions.firestore
             .filter((x) => !oldInvites.includes(x))[0];
 
         let organizerRef;
+        let startDate;
         // get the cottage Information
         await db.collection("cottages")
             .doc(invitedCottageId).get().then((cottageSnapshot) => {
               const cottageData = cottageSnapshot.data();
               organizerRef = cottageData.organizer;
+              startDate = cottageData.startDate.toDate().toDateString();
             });
 
         let organizerName;
@@ -94,15 +96,16 @@ exports.sendInviteNotification = functions.firestore
               userEmail = userData.email;
             });
 
-        const emailToSend = {
-          subject: "You Have Received a Cottage Invite!",
-          html: `${organizerName} has invited you to a cottage!`,
-        };
-
         await db.collection("emails")
             .doc().set({
               to: userEmail,
-              message: emailToSend,
+              template: {
+                name: "inviteTemplate",
+                data: {
+                  organizerName: organizerName,
+                  startDate: startDate,
+                },
+              },
             });
       }
     });
@@ -137,11 +140,13 @@ exports.sendEmailToUnregisteredAddress = functions.firestore
         log(invitedCottageId);
 
         let organizerRef;
+        let startDate;
         // get the cottage Information
         await db.collection("cottages")
             .doc(invitedCottageId).get().then((cottageSnapshot) => {
               const cottageData = cottageSnapshot.data();
               organizerRef = cottageData.organizer;
+              startDate = cottageData.startDate.toDate().toDateString();
             });
 
         let organizerName;
@@ -154,15 +159,16 @@ exports.sendEmailToUnregisteredAddress = functions.firestore
         const emailAddress = context.params.emailAddress;
         log(emailAddress);
 
-        const emailToSend = {
-          subject: "You Have Received a Cottage Invite!",
-          html: `${organizerName} has invited you to a cottage!`,
-        };
-
         await db.collection("emails")
             .doc().set({
               to: emailAddress,
-              message: emailToSend,
+              template: {
+                name: "inviteTemplate",
+                data: {
+                  organizerName: organizerName,
+                  startDate: startDate,
+                },
+              },
             });
       }
     });
